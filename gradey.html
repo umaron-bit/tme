@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gradey</title>
+<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+<!-- Charts + XLSX + PDF -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+    --primary:#1e3a8a;
+    --accent:#2563eb;
+    --bg:#f1f5f9;
+    --card:#ffffff;
+    --success:#16a34a;
+    --warning:#f59e0b;
+    --danger:#dc2626;
+}
+
+*{ box-sizing:border-box; }
+body{ margin:0; font-family:'Poppins',sans-serif; background:var(--bg); }
+
+header{
+    background:linear-gradient(90deg,var(--primary),var(--accent));
+    color:white; padding:18px 30px; font-size:22px; font-weight:600; letter-spacing:1px;
+}
+
+.container{ padding:25px; }
+
+.card{
+    background:var(--card); padding:18px; border-radius:14px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.08); margin-bottom:20px;
+}
+
+h3{ margin-top:0; font-weight:600; }
+
+input, select, textarea{
+    font-family:'Poppins',sans-serif; padding:10px;
+    border-radius:8px; border:1px solid #ddd; outline:none; transition:0.2s;
+}
+input:focus, select:focus, textarea:focus{
+    border-color:var(--accent); box-shadow:0 0 0 2px rgba(37,99,235,0.2);
+}
+
+button{
+    padding:10px 14px; border:none; border-radius:8px;
+    font-family:'Poppins',sans-serif; font-weight:500; cursor:pointer;
+    background:var(--accent); color:white; transition:0.2s;
+}
+button:hover{ background:var(--primary); }
+
+.layout{ display:flex; gap:20px; }
+
+.table-section{ flex:1; }
+.chart-section{ flex:1; display:flex; flex-direction:column; gap:20px; }
+
+table{
+    width:100%; border-collapse:collapse; font-size:14px;
+}
+th, td{ padding:10px; text-align:center; border-bottom:1px solid #eee; }
+th{ background:#f8fafc; font-weight:600; }
+td[contenteditable]{ background:#f9fafb; cursor:text; }
+
+.promoted{color:var(--success);font-weight:600;}
+.borderline{color:var(--warning);font-weight:600;}
+.repeat{color:var(--danger);font-weight:600;}
+
+textarea{ width:100%; resize:none; margin-top:8px; }
+canvas{ background:white; padding:15px; border-radius:12px; }
+</style>
+</head>
+<body>
+
+<header>📘 Gradey <a href="tme.html">TME(tutoring made easy)</a></header>
+
+<div class="container">
+
+<div class="card">
+<h3>Gradebook Controls</h3>
+<select id="gradebookSelect" onchange="switchGradebook()"></select>
+<button onclick="createGradebook()">New</button>
+<button onclick="renameGradebook()">Rename</button>
+<button onclick="deleteGradebook()">Delete</button>
+<br><br>
+<select id="termSelect" onchange="switchTerm()"></select>
+<button onclick="addTerm()">Add Term</button>
+<br><br>
+<input id="studentName" placeholder="Student Name">
+<input id="studentScore" type="number" placeholder="Score">
+<button onclick="addStudent()">Add</button>
+<br><br>
+<input type="file" id="fileInput" accept=".csv,.xlsx">
+<button onclick="importFile()">Import</button>
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div class="card">
+<h3>Bulk Add Students</h3>
+<textarea id="bulkInput" rows="4" placeholder="Student, Score"></textarea>
+<button onclick="bulkAdd()">Add All</button>
+</div>
+
+<div class="layout">
+
+<div class="card table-section">
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Name</th>
+<th>Score</th>
+<th>Status</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<div class="chart-section">
+<canvas id="barChart"></canvas>
+<canvas id="pieChart"></canvas>
+</div>
+
+</div>
+</div>
+
+<script>
+let gradebooks = JSON.parse(localStorage.getItem("gradeyData"))||{};
+let currentGradebook = null;
+let currentTerm = null;
+let barChart, pieChart;
+
+function save(){ localStorage.setItem("gradeyData", JSON.stringify(gradebooks)); }
+
+function initialize(){
+    if(Object.keys(gradebooks).length>0){
+        currentGradebook = Object.keys(gradebooks)[0];
+        currentTerm = Object.keys(gradebooks[currentGradebook].terms)[0];
+    }
+    renderGradebooks();
+    renderTerms();
+    renderAll();
+}
+window.onload = initialize;
+
+// Gradebook Controls
+function createGradebook(){
+    let name = prompt("Gradebook name:");
+    if(!name) return;
+    gradebooks[name] = {terms: {"Term 1": []}};
+    currentGradebook = name; currentTerm = "Term 1";
+    save(); initialize();
+}
+function renameGradebook(){
+    let newName = prompt("New name:");
+    if(!newName) return;
+    gradebooks[newName] = gradebooks[currentGradebook];
+    delete gradebooks[currentGradebook];
+    currentGradebook = newName;
+    save(); initialize();
+}
+function deleteGradebook(){
+    if(!confirm("Delete this gradebook?")) return;
+    delete gradebooks[currentGradebook];
+    currentGradebook = null; currentTerm = null;
+    save(); initialize();
+}
+function renderGradebooks(){
+    let select = document.getElementById("gradebookSelect");
+    select.innerHTML = "";
+    Object.keys(gradebooks).forEach(g=>{
+        let opt = document.createElement("option");
+        opt.value = g; opt.textContent = g;
+        select.appendChild(opt);
+    });
+    select.value = currentGradebook;
+}
+function switchGradebook(){
+    currentGradebook = document.getElementById("gradebookSelect").value;
+    currentTerm = Object.keys(gradebooks[currentGradebook].terms)[0];
+    renderTerms(); renderAll();
+}
+
+// Term Controls
+function addTerm(){
+    let name = prompt("Term name:");
+    if(!name) return;
+    gradebooks[currentGradebook].terms[name] = [];
+    currentTerm = name;
+    save(); renderTerms(); renderAll();
+}
+function renderTerms(){
+    let select = document.getElementById("termSelect");
+    select.innerHTML = "";
+    if(!currentGradebook) return;
+    Object.keys(gradebooks[currentGradebook].terms).forEach(t=>{
+        let opt = document.createElement("option");
+        opt.value = t; opt.textContent = t;
+        select.appendChild(opt);
+    });
+    select.value = currentTerm;
+}
+function switchTerm(){
+    currentTerm = document.getElementById("termSelect").value;
+    renderAll();
+}
+
+// Add Students
+function addStudent(){
+    let name = document.getElementById("studentName").value.trim();
+    let score = parseFloat(document.getElementById("studentScore").value);
+    if(!name || isNaN(score)) return;
+    gradebooks[currentGradebook].terms[currentTerm].push({student:name, score});
+    save(); renderAll();
+    document.getElementById("studentName").value = "";
+    document.getElementById("studentScore").value = "";
+}
+function bulkAdd(){
+    let lines = document.getElementById("bulkInput").value.split("\n");
+    lines.forEach(l=>{
+        let match = l.match(/^(.+)[,\-]\s*(\d+)$/);
+        if(match){
+            gradebooks[currentGradebook].terms[currentTerm].push({student: match[1].trim(), score: parseFloat(match[2])});
+        }
+    });
+    save(); renderAll();
+    document.getElementById("bulkInput").value = "";
+}
+
+// Status
+function getStatus(score){
+    if(score>=50) return `<span class="promoted">Promoted</span>`;
+    if(score>=45) return `<span class="borderline">Borderline</span>`;
+    return `<span class="repeat">Repeat</span>`;
+}
+
+// Table + Inline Editing
+function renderAll(){
+    if(!currentGradebook||!currentTerm) return;
+    let students = gradebooks[currentGradebook].terms[currentTerm].sort((a,b)=>b.score-a.score);
+
+    let table = document.getElementById("tableBody");
+    table.innerHTML = "";
+
+    students.forEach((s,i)=>{
+        let tr = document.createElement("tr");
+
+        // Rank
+        let tdRank = document.createElement("td");
+        tdRank.textContent = i+1;
+        tr.appendChild(tdRank);
+
+        // Name
+        let tdName = document.createElement("td");
+        tdName.contentEditable = true;
+        tdName.textContent = s.student;
+        addInlineEditing(tdName, i, 'student');
+        tr.appendChild(tdName);
+
+        // Score
+        let tdScore = document.createElement("td");
+        tdScore.contentEditable = true;
+        tdScore.textContent = s.score;
+        addInlineEditing(tdScore, i, 'score');
+        tr.appendChild(tdScore);
+
+        // Status
+        let tdStatus = document.createElement("td");
+        tdStatus.innerHTML = getStatus(s.score);
+        tr.appendChild(tdStatus);
+
+        // Delete
+        let tdDel = document.createElement("td");
+        let btn = document.createElement("button");
+        btn.textContent = "X";
+        btn.onclick = ()=>{ deleteStudent(i); };
+        tdDel.appendChild(btn);
+        tr.appendChild(tdDel);
+
+        table.appendChild(tr);
+    });
+
+    renderCharts(students);
+}
+
+// Inline editing logic
+function addInlineEditing(td, index, key){
+    let original = td.textContent;
+    td.addEventListener("focus", ()=> original = td.textContent);
+    td.addEventListener("keydown", e=>{
+        if(e.key === "Enter"){
+            e.preventDefault();
+            let val = td.textContent.trim();
+            if(key==='score'){
+                let num = parseFloat(val);
+                if(isNaN(num)){ td.textContent = original; return; }
+                gradebooks[currentGradebook].terms[currentTerm][index][key] = num;
+            } else {
+                gradebooks[currentGradebook].terms[currentTerm][index][key] = val;
+            }
+            save();
+            renderAll();
+            td.style.transition = "background 0.5s";
+            td.style.background = "#fef3c7";
+            setTimeout(()=> td.style.background="",500);
+        } else if(e.key === "Escape"){
+            td.textContent = original;
+            td.blur();
+        }
+    });
+}
+
+// Delete Student
+function deleteStudent(i){
+    if(!confirm("Delete this student?")) return;
+    gradebooks[currentGradebook].terms[currentTerm].splice(i,1);
+    save(); renderAll();
+}
+
+// Charts
+function renderCharts(students){
+    if(barChart) barChart.destroy();
+    if(pieChart) pieChart.destroy();
+
+    barChart = new Chart(document.getElementById("barChart"),{
+        type:'bar',
+        data:{
+            labels:students.map(s=>s.student),
+            datasets:[{
+                label:'Scores',
+                data:students.map(s=>s.score),
+                backgroundColor: students.map(s=>{
+                    if(s.score>=50) return 'green';
+                    if(s.score>=45) return 'orange';
+                    return 'red';
+                })
+            }]
+        }
+    });
+
+    pieChart = new Chart(document.getElementById("pieChart"),{
+        type:'pie',
+        data:{
+            labels:students.map(s=>s.student),
+            datasets:[{
+                data:students.map(s=>s.score),
+                backgroundColor: students.map(s=>{
+                    if(s.score>=50) return 'green';
+                    if(s.score>=45) return 'orange';
+                    return 'red';
+                })
+            }]
+        }
+    });
+}
+
+// Import / Export
+function importFile(){
+    let file = document.getElementById("fileInput").files[0];
+    if(!file) return;
+    let reader = new FileReader();
+
+    if(file.name.endsWith(".csv")){
+        reader.onload = e=>{
+            e.target.result.split("\n").slice(1).forEach(line=>{
+                let [n,s] = line.split(",");
+                if(n && s) gradebooks[currentGradebook].terms[currentTerm].push({student:n.trim(), score:parseFloat(s)});
+            });
+            save(); renderAll();
+        };
+        reader.readAsText(file);
+    }
+
+    if(file.name.endsWith(".xlsx")){
+        reader.onload = e=>{
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, {type:'array'});
+            let sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let rows = XLSX.utils.sheet_to_json(sheet);
+            rows.forEach(r=>{
+                if(r.Name && r.Score!==undefined){
+                    gradebooks[currentGradebook].terms[currentTerm].push({student:r.Name, score:parseFloat(r.Score)});
+                }
+            });
+            save(); renderAll();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function exportCSV(){
+    let students = gradebooks[currentGradebook].terms[currentTerm];
+    let csv = "Rank,Name,Score\n";
+    students.forEach((s,i)=> csv += `${i+1},${s.student},${s.score}\n`);
+    let blob = new Blob([csv],{type:"text/csv"});
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download="gradey.csv"; a.click();
+}
+
+function exportPDF(){
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF();
+    let y = 20;
+    doc.text(currentGradebook+" - "+currentTerm,20,y);
+    y+=10;
+    gradebooks[currentGradebook].terms[currentTerm].forEach((s,i)=>{
+        if(y>280){ doc.addPage(); y=20; }
+        doc.text(`${i+1}. ${s.student} - ${s.score}`,20,y);
+        y+=8;
+    });
+    doc.save("gradey.pdf");
+}
+</script>
+
+</body>
+</html>

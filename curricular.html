@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Curricular v2.0 - TME Curriculum Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+ --bg:#0f172a;
+ --panel:#1e293b;
+ --accent:#3b82f6;
+ --text:#f1f5f9;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text);display:flex;height:100vh;}
+.sidebar{width:320px;background:var(--panel);padding:20px;overflow:auto;border-right:1px solid #334155;}
+button,select,input{width:100%;padding:8px;margin-bottom:10px;border-radius:6px;border:none;}
+button{background:var(--accent);color:white;cursor:pointer;}
+.editable-div{background:#1e293b;color:#f1f5f9;padding:8px;min-height:120px;overflow:auto;border-radius:6px;outline:none;margin-bottom:10px;}
+.main{flex:1;padding:20px;overflow:auto;}
+table{width:100%;border-collapse:collapse;background:var(--panel);margin-bottom:20px;}
+th,td{padding:8px;border:1px solid #334155;text-align:left;}
+th{background:#0f172a;}
+.edit-input{width:100%;padding:4px;border-radius:4px;border:none;}
+.delete-btn{background:#dc2626;padding:4px 6px;border-radius:4px;cursor:pointer;font-size:12px;color:white;}
+.week-header{background:#334155;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+<h2>Curricular <a href="tme.html">TME(tutoring made easy)</a></h2>
+
+<button onclick="addSubject()">Add Subject</button>
+<select id="subjectSelect" onchange="render()"></select>
+
+<button onclick="addTerm()">Add Term</button>
+<select id="termSelect" onchange="render()"></select>
+
+<button onclick="addWeek()">Add Week</button>
+
+<hr>
+
+<div id="bulkInput" class="editable-div" contenteditable="true" placeholder="Bulk add weeks, topics, objectives, materials, assessment, homework:
+Format:
+Week Name
+Topic | Objectives | Materials | Assessment | Homework
+Topic2 | Obj | Mat | Assess | HW
+Blank line for next week"></div>
+<button onclick="bulkAddWeeks()">Bulk Add Weeks + Topics</button>
+
+<hr>
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div class="main">
+<h3>Topics & Lesson Plans (All Weeks)</h3>
+<div id="tableContainer"></div>
+</div>
+
+<script>
+let data=JSON.parse(localStorage.getItem("curricularData"))||{subjects:[]};
+
+function save(){localStorage.setItem("curricularData",JSON.stringify(data));}
+function getCurrentSubject(){return data.subjects[document.getElementById("subjectSelect").selectedIndex];}
+function getCurrentTerm(){const s=getCurrentSubject();return s?s.terms[document.getElementById("termSelect").selectedIndex]:null;}
+
+function addSubject(){
+  const name=prompt("Subject Name?");
+  if(!name)return;
+  data.subjects.push({name,terms:[]});
+  save();render();
+}
+
+function addTerm(){
+  const s=getCurrentSubject();
+  if(!s)return alert("Select a subject first");
+  const name=prompt("Term Name?");
+  if(!name)return;
+  s.terms.push({name,weeks:[]});
+  save();render();
+}
+
+function addWeek(){
+  const t=getCurrentTerm();
+  if(!t)return alert("Select a term first");
+  const name=prompt("Week Name?");
+  if(!name)return;
+  t.weeks.push({name,topics:[]});
+  save();render();
+}
+
+// Bulk add weeks + topics + objectives/materials/assessment/homework
+function bulkAddWeeks(){
+  const t = getCurrentTerm();
+  if(!t) return alert("Select a term first");
+  const content=document.getElementById("bulkInput").innerText;
+  if(!content) return;
+
+  const lines=content.split("\n").map(l=>l.trim()).filter(l=>l!=="");
+  let currentWeek=null;
+  lines.forEach(line=>{
+    if(line.toLowerCase().startsWith("week")){
+      currentWeek={name:line, topics:[]};
+      t.weeks.push(currentWeek);
+    } else if(currentWeek){
+      const parts=line.split("|").map(p=>p.trim());
+      currentWeek.topics.push({
+        name: parts[0]||"",
+        objectives: parts[1]||"",
+        materials: parts[2]||"",
+        assessment: parts[3]||"",
+        homework: parts[4]||""
+      });
+    }
+  });
+
+  document.getElementById("bulkInput").innerHTML="";
+  save();render();
+}
+
+function deleteTopic(weekIndex,topicIndex){
+  const t=getCurrentTerm(); if(!t) return;
+  if(confirm("Delete this topic?")){t.weeks[weekIndex].topics.splice(topicIndex,1); save(); render();}
+}
+
+function editField(e,weekIndex,topicIndex,field){
+  const t=getCurrentTerm(); if(!t) return;
+  const td=e.target;
+  td.innerHTML=`<input class="edit-input" value="${t.weeks[weekIndex].topics[topicIndex][field]}" 
+    onkeydown="handleEdit(event,${weekIndex},${topicIndex},'${field}')">`;
+  td.querySelector("input").focus();
+}
+
+function handleEdit(e,weekIndex,topicIndex,field){
+  const t=getCurrentTerm(); if(!t) return;
+  if(e.key==="Enter"){t.weeks[weekIndex].topics[topicIndex][field]=e.target.value.trim(); save(); render();}
+  if(e.key==="Escape"){render();}
+}
+
+function render(){
+  const subjectSelect=document.getElementById("subjectSelect");
+  const termSelect=document.getElementById("termSelect");
+  const curSub=subjectSelect.selectedIndex>=0 ? subjectSelect.selectedIndex : 0;
+  const curTerm=termSelect.selectedIndex>=0 ? termSelect.selectedIndex : 0;
+
+  // Populate subjects
+  subjectSelect.innerHTML="";
+  data.subjects.forEach(s=>{let o=document.createElement("option");o.textContent=s.name;subjectSelect.appendChild(o);});
+  if(data.subjects.length>0) subjectSelect.selectedIndex=Math.min(curSub,data.subjects.length-1);
+
+  // Populate terms
+  const s=getCurrentSubject();
+  termSelect.innerHTML="";
+  if(s && s.terms){s.terms.forEach(t=>{let o=document.createElement("option");o.textContent=t.name;termSelect.appendChild(o);});}
+  if(s && s.terms.length>0) termSelect.selectedIndex=Math.min(curTerm,s.terms.length-1);
+
+  const t=getCurrentTerm();
+  const container=document.getElementById("tableContainer");container.innerHTML="";
+  if(!t || !t.weeks || t.weeks.length===0) return;
+
+  let html="<table><tr><th>Week</th><th>Topic</th><th>Objectives</th><th>Materials</th><th>Assessment</th><th>Homework</th><th>Delete</th></tr>";
+
+  t.weeks.forEach((w,weekIndex)=>{
+    w.topics.forEach((top,topicIndex)=>{
+      html+=`<tr>
+        <td class="week-header">${w.name}</td>
+        <td onclick="editField(event,${weekIndex},${topicIndex},'name')">${top.name}</td>
+        <td onclick="editField(event,${weekIndex},${topicIndex},'objectives')">${top.objectives}</td>
+        <td onclick="editField(event,${weekIndex},${topicIndex},'materials')">${top.materials}</td>
+        <td onclick="editField(event,${weekIndex},${topicIndex},'assessment')">${top.assessment}</td>
+        <td onclick="editField(event,${weekIndex},${topicIndex},'homework')">${top.homework}</td>
+        <td><span class="delete-btn" onclick="deleteTopic(${weekIndex},${topicIndex})">X</span></td>
+      </tr>`;
+    });
+  });
+
+  html+="</table>";
+  container.innerHTML=html;
+}
+
+// Export CSV & PDF
+function exportCSV(){
+  const t=getCurrentTerm(); if(!t) return;
+  let csv="Week,Topic,Objectives,Materials,Assessment,Homework\n";
+  t.weeks.forEach(w=>{w.topics.forEach(top=>{csv+=`${w.name},${top.name},${top.objectives},${top.materials},${top.assessment},${top.homework}\n`})});
+  const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="curriculum.csv"; a.click();
+}
+
+function exportPDF(){
+  const {jsPDF}=window.jspdf; const t=getCurrentTerm(); if(!t) return;
+  const doc=new jsPDF(); let y=10; doc.text("Curriculum Plan",10,y); y+=10;
+  t.weeks.forEach(w=>{
+    w.topics.forEach(top=>{
+      doc.text(`Week: ${w.name}`,10,y); y+=6;
+      doc.text(`Topic: ${top.name}`,12,y); y+=6;
+      if(top.objectives){doc.text(`Objectives: ${top.objectives}`,14,y); y+=6;}
+      if(top.materials){doc.text(`Materials: ${top.materials}`,14,y); y+=6;}
+      if(top.assessment){doc.text(`Assessment: ${top.assessment}`,14,y); y+=6;}
+      if(top.homework){doc.text(`Homework: ${top.homework}`,14,y); y+=6;}
+      y+=2;
+    });
+  });
+  doc.save("curriculum.pdf");
+}
+
+render();
+</script>
+</body>
+</html>

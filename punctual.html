@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Punctual - TME</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+ --bg:#0f172a;
+ --panel:#1e293b;
+ --accent:#3b82f6;
+ --text:#f1f5f9;
+
+ --present:#22c55e;
+ --absent:#ef4444;
+ --late:#f59e0b;
+ --excused:#38bdf8;
+}
+
+*{box-sizing:border-box;}
+body{
+ margin:0;
+ font-family:system-ui;
+ background:var(--bg);
+ color:var(--text);
+ display:flex;
+ height:100vh;
+}
+
+.sidebar{
+ width:260px;
+ background:var(--panel);
+ padding:20px;
+ overflow:auto;
+ border-right:1px solid #334155;
+}
+
+button,select,input,textarea{
+ width:100%;
+ padding:8px;
+ margin-bottom:10px;
+ border-radius:6px;
+ border:none;
+}
+
+button{
+ background:var(--accent);
+ color:white;
+ cursor:pointer;
+}
+
+.main{
+ flex:1;
+ padding:20px;
+ overflow:auto;
+}
+
+table{
+ width:100%;
+ border-collapse:collapse;
+ background:var(--panel);
+ margin-bottom:20px;
+}
+
+th,td{
+ padding:8px;
+ border:1px solid #334155;
+ text-align:center;
+}
+
+td.name{
+ text-align:left;
+ cursor:pointer;
+}
+
+.status-present{background:var(--present);}
+.status-absent{background:var(--absent);}
+.status-late{background:var(--late);}
+.status-excused{background:var(--excused);}
+
+.delete-btn{
+ background:#dc2626;
+ padding:4px 6px;
+ border-radius:4px;
+ cursor:pointer;
+ font-size:12px;
+}
+
+.edit-input{
+ width:100%;
+ padding:4px;
+ border-radius:4px;
+ border:none;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+<h2>Punctual <a href="tme.html">TME(tutoring made easy)</a></h2>
+
+<button onclick="addClass()">Add Class</button>
+<select id="classSelect" onchange="render()"></select>
+
+<button onclick="addTerm()">Add Term</button>
+<select id="termSelect" onchange="render()"></select>
+
+<button onclick="addWeek()">Add Week</button>
+<select id="weekSelect" onchange="render()"></select>
+
+<hr>
+
+<input id="studentName" placeholder="Add Student">
+<button onclick="addStudent()">Add</button>
+
+<textarea id="bulkInput" placeholder="Bulk Add (one per line)"></textarea>
+<button onclick="bulkAdd()">Bulk Add</button>
+
+<hr>
+
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div class="main">
+<h3>Attendance</h3>
+<div id="tableContainer"></div>
+
+<h3>Attendance Chart</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+const days=["Mon","Tue","Wed","Thu","Fri"];
+let chart;
+let data=JSON.parse(localStorage.getItem("punctualData"))||{classes:[]};
+
+function save(){
+ localStorage.setItem("punctualData",JSON.stringify(data));
+}
+
+function getCurrentClass(){
+ return data.classes[document.getElementById("classSelect").selectedIndex];
+}
+
+function getCurrentTerm(){
+ const c=getCurrentClass();
+ return c?c.terms[document.getElementById("termSelect").selectedIndex]:null;
+}
+
+function getCurrentWeek(){
+ const t=getCurrentTerm();
+ return t?t.weeks[document.getElementById("weekSelect").selectedIndex]:null;
+}
+
+function addClass(){
+ const name=prompt("Class name?");
+ if(!name)return;
+ data.classes.push({name,terms:[]});
+ save();render();
+}
+
+function addTerm(){
+ const c=getCurrentClass();
+ if(!c)return alert("Select class");
+ const name=prompt("Term name?");
+ if(!name)return;
+ c.terms.push({name,weeks:[]});
+ save();render();
+}
+
+function addWeek(){
+ const t=getCurrentTerm();
+ if(!t)return alert("Select term");
+ const name=prompt("Week name?");
+ if(!name)return;
+ t.weeks.push({name,students:[]});
+ save();render();
+}
+
+function addStudent(){
+ const w=getCurrentWeek();
+ if(!w)return alert("Select week");
+ const name=document.getElementById("studentName").value.trim();
+ if(!name)return;
+ w.students.push({name,attendance:{}});
+ document.getElementById("studentName").value="";
+ save();render();
+}
+
+function bulkAdd(){
+ const w=getCurrentWeek();
+ if(!w)return alert("Select week");
+ const names=document.getElementById("bulkInput").value.split("\n")
+  .map(n=>n.trim()).filter(n=>n);
+ names.forEach(n=>w.students.push({name:n,attendance:{}}));
+ document.getElementById("bulkInput").value="";
+ save();render();
+}
+
+function deleteStudent(i){
+ const w=getCurrentWeek();
+ if(confirm("Delete student?")){
+  w.students.splice(i,1);
+  save();render();
+ }
+}
+
+function cycleStatus(current){
+ const order=["present","absent","late","excused"];
+ return order[(order.indexOf(current)+1)%order.length];
+}
+
+function calculatePercent(s){
+ let total=0,p=0;
+ days.forEach(d=>{
+  if(s.attendance[d]){
+   total++;
+   if(s.attendance[d]=="present")p++;
+  }
+ });
+ return total?Math.round((p/total)*100):0;
+}
+
+function render(){
+ const classSelect=document.getElementById("classSelect");
+ const termSelect=document.getElementById("termSelect");
+ const weekSelect=document.getElementById("weekSelect");
+
+ classSelect.innerHTML="";
+ data.classes.forEach(c=>{
+  const o=document.createElement("option");
+  o.textContent=c.name;
+  classSelect.appendChild(o);
+ });
+
+ const c=getCurrentClass();
+ termSelect.innerHTML="";
+ if(c)c.terms.forEach(t=>{
+  const o=document.createElement("option");
+  o.textContent=t.name;
+  termSelect.appendChild(o);
+ });
+
+ const t=getCurrentTerm();
+ weekSelect.innerHTML="";
+ if(t)t.weeks.forEach(w=>{
+  const o=document.createElement("option");
+  o.textContent=w.name;
+  weekSelect.appendChild(o);
+ });
+
+ const w=getCurrentWeek();
+ const container=document.getElementById("tableContainer");
+ container.innerHTML="";
+ if(!w)return;
+
+ let html="<table><tr><th>Student</th>";
+ days.forEach(d=>html+=`<th>${d}</th>`);
+ html+="<th>%</th><th>Delete</th></tr>";
+
+ w.students.forEach((s,i)=>{
+  const percent=calculatePercent(s);
+  html+=`<tr><td class="name" onclick="editName(${i})">${s.name}</td>`;
+  days.forEach(d=>{
+   const st=s.attendance[d]||"";
+   html+=`<td class="status-${st}" onclick="toggle(${i},'${d}')">${st?st[0].toUpperCase():""}</td>`;
+  });
+  html+=`<td>${percent}%</td>`;
+  html+=`<td><span class="delete-btn" onclick="deleteStudent(${i})">X</span></td></tr>`;
+ });
+
+ html+="</table>";
+ container.innerHTML=html;
+
+ updateChart(w);
+}
+
+function toggle(i,day){
+ const w=getCurrentWeek();
+ const s=w.students[i];
+ s.attendance[day]=cycleStatus(s.attendance[day]||"");
+ save();render();
+}
+
+function editName(i){
+ const w=getCurrentWeek();
+ const s=w.students[i];
+ const td=event.target;
+ td.innerHTML=`<input class="edit-input" value="${s.name}" onkeydown="handleEdit(event,${i})">`;
+ td.querySelector("input").focus();
+}
+
+function handleEdit(e,i){
+ const w=getCurrentWeek();
+ if(e.key==="Enter"){
+  w.students[i].name=e.target.value.trim()||w.students[i].name;
+  save();render();
+ }
+ if(e.key==="Escape"){
+  render();
+ }
+}
+
+function updateChart(w){
+ const labels=w.students.map(s=>s.name);
+ const values=w.students.map(s=>calculatePercent(s));
+
+ if(chart)chart.destroy();
+ chart=new Chart(document.getElementById("chart"),{
+  type:"bar",
+  data:{labels,datasets:[{label:"Attendance %",data:values}]},
+  options:{responsive:true}
+ });
+}
+
+function exportCSV(){
+ const w=getCurrentWeek();
+ if(!w)return;
+ let csv="Student,"+days.join(",")+",Percentage\n";
+ w.students.forEach(s=>{
+  const row=[s.name];
+  days.forEach(d=>row.push(s.attendance[d]||""));
+  row.push(calculatePercent(s)+"%");
+  csv+=row.join(",")+"\n";
+ });
+ const blob=new Blob([csv],{type:"text/csv"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="attendance.csv";
+ a.click();
+}
+
+function exportPDF(){
+ const {jsPDF}=window.jspdf;
+ const doc=new jsPDF();
+ const w=getCurrentWeek();
+ if(!w)return;
+ let y=10;
+ doc.text("Attendance Report",10,y);
+ y+=10;
+ w.students.forEach(s=>{
+  doc.text(`${s.name} - ${calculatePercent(s)}%`,10,y);
+  y+=8;
+ });
+ doc.save("attendance.pdf");
+}
+
+render();
+</script>
+</body>
+</html>
