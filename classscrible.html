@@ -2,266 +2,287 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ClassScribble – School Themed</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<title>ClassScribble</title>
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<!-- html2pdf -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
-:root{
-  --primary:#3b82f6; --secondary:#facc15;
-  --bg:#f1f5f9; --panel:#e2e8f0; --text:#1e293b;
-  --accent:#2563eb; --hover:#60a5fa; --shadow:0 4px 6px rgba(0,0,0,0.1);
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Poppins',sans-serif;
+  display:flex;
+  height:100vh;
+  background:#f4f7fb;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;}
+
+/* SIDEBAR */
 .sidebar{
-  width:280px;background:var(--panel);padding:15px;overflow:auto;border-right:1px solid #cbd5e1;
-  display:flex;flex-direction:column;gap:10px;
+  width:70px;
+  background:#1f3c88;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px 5px;
+  gap:10px;
 }
-.sidebar h2{font-family:'Poppins',sans-serif;font-weight:700;color:var(--primary);margin-bottom:10px;text-align:center;}
-.sidebar button,.sidebar select{width:100%;padding:6px;margin-bottom:6px;border-radius:6px;border:none;cursor:pointer;font-family:'Roboto',sans-serif;font-weight:500;transition:0.2s;box-shadow:var(--shadow);}
-.sidebar button{background:var(--primary);color:white;} .sidebar button:hover{background:var(--hover);}
-.sidebar select{background:white;border:1px solid #cbd5e1;}
-#toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
-#toolbar button,#toolbar select{flex:0 0 auto;padding:4px 6px;font-size:0.8em;border-radius:6px;background:white;color:var(--text);box-shadow:var(--shadow);}
-#toolbar button:hover{background:var(--secondary);color:white;}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px;}
-#pageArea{flex:1;background:white;margin:10px 0;padding:20px;border-radius:12px;overflow:auto;font-family:'Roboto',sans-serif;font-size:16px;line-height:1.5em;box-shadow:var(--shadow);}
-#pageArea[contenteditable="true"]{outline:none;}
-.thumbnailContainer{display:flex;overflow-x:auto;margin-top:10px;gap:6px;padding-bottom:4px;}
-.thumbnail{background:var(--panel);color:var(--text);padding:6px;border-radius:6px;cursor:pointer;min-width:60px;text-align:center;box-shadow:var(--shadow);transition:0.2s;}
-.thumbnail:hover{background:var(--secondary);color:white;}
-.thumbnail.active{border:2px solid var(--primary);}
-.thumbnail.dragging{opacity:0.5;}
-.themeSelect{width:100%;padding:6px;margin-bottom:6px;border-radius:6px;}
-.fullscreen{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:2em;z-index:1000;display:none;flex-direction:column;overflow:auto;}
-.fullscreen .content{width:90%;height:80%;overflow:auto;transform-origin:center center;background:white;padding:20px;border-radius:12px;box-shadow:var(--shadow);}
-::-webkit-scrollbar{height:8px;width:8px;}
-::-webkit-scrollbar-thumb{background:var(--primary);border-radius:4px;}
-::-webkit-scrollbar-track{background:#f1f5f9;}
+.sidebar button{
+  width:40px;
+  height:40px;
+  border:none;
+  border-radius:8px;
+  background:#2e5cb8;
+  color:white;
+  cursor:pointer;
+  font-size:16px;
+}
+.sidebar button:hover{
+  background:#4d79ff;
+}
+
+/* MAIN AREA */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+/* HEADER */
+.header{
+  background:#ffffff;
+  padding:10px 20px;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #ddd;
+}
+
+/* SLIDE AREA */
+.slide-container{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#e9edf5;
+}
+
+.slide{
+  width:1120px;
+  height:630px;
+  background:white;
+  padding:40px;
+  overflow:auto;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
+
+.slide[contenteditable="true"]:focus{
+  outline:2px solid #4d79ff;
+}
+
+/* THUMBNAILS */
+.thumbnails{
+  height:90px;
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding:10px;
+  background:#ffffff;
+  border-top:1px solid #ddd;
+}
+
+.thumb{
+  width:160px;
+  height:80px;
+  background:white;
+  border:2px solid transparent;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  padding:5px;
+  overflow:hidden;
+}
+.thumb.active{
+  border-color:#4d79ff;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  display:none;
+  box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+.modal input{
+  width:100%;
+  padding:8px;
+  margin-bottom:10px;
+}
+.modal button{
+  padding:6px 12px;
+  border:none;
+  background:#4d79ff;
+  color:white;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+/* ALIGNMENT */
+.left{text-align:left}
+.center{text-align:center}
+.right{text-align:right}
 </style>
 </head>
 <body>
 
 <div class="sidebar">
-<h2>ClassScribble made by <a href="tme.html">TME(tutoring made easy)</a></h2>
-
-<button onclick="createPresentation()">+ New Presentation</button>
-<select id="presentationSelect" onchange="switchPresentation(this.value)"></select>
-
-<div id="toolbar">
-  <button onclick="format('bold')"><b>B</b></button>
-  <button onclick="format('italic')"><i>I</i></button>
-  <button onclick="format('underline')"><u>U</u></button>
-  <select onchange="format('fontSize', this.value)">
-    <option value="3">Normal</option>
-    <option value="4">Large</option>
-    <option value="5">Larger</option>
-    <option value="6">Huge</option>
-  </select>
-  <button onclick="format('insertOrderedList')">OL</button>
-  <button onclick="format('insertUnorderedList')">UL</button>
-  <button onclick="format('justifyLeft')">Left</button>
-  <button onclick="format('justifyCenter')">Center</button>
-  <button onclick="format('justifyRight')">Right</button>
-  <button onclick="format('undo')">↶</button>
-  <button onclick="format('redo')">↷</button>
-</div>
-
-<button onclick="addPage()">Add Slide</button>
-<button onclick="deletePage()">Delete Slide</button>
-
-<select class="themeSelect" id="themeSelect" onchange="changeTheme(this.value)">
-  <option value="default">Default</option>
-  <option value="dark">Dark</option>
-  <option value="light">Light</option>
-  <option value="blue">Blue</option>
-</select>
-
-<button onclick="enterPresentation()">Presentation Mode</button>
-<button onclick="exportPDF()">Export PDF (Landscape)</button>
+  <button onclick="addSlide()">＋</button>
+  <button onclick="deleteSlide()">－</button>
+  <button onclick="setAlign('left')">L</button>
+  <button onclick="setAlign('center')">C</button>
+  <button onclick="setAlign('right')">R</button>
+  <button onclick="openMath()">∑</button>
+  <button onclick="exportPDF()">PDF</button>
 </div>
 
 <div class="main">
-<div id="pageArea" contenteditable="true" placeholder="Type your slide content here..."></div>
-<div class="thumbnailContainer" id="thumbnailContainer"></div>
+  <div class="header">
+    <span>ClassScribble</span>
+    <button onclick="newPresentation()">New Presentation</button>
+  </div>
+
+  <div class="slide-container">
+    <div id="slide" class="slide center" contenteditable="true">
+      <h1>Welcome to ClassScribble</h1>
+      <p>Start typing here...</p>
+    </div>
+  </div>
+
+  <div id="thumbnails" class="thumbnails"></div>
 </div>
 
-<div class="fullscreen" id="fullscreen">
-  <div class="content" id="fsContent"></div>
-  <div style="margin-top:20px;font-size:16px;">
-    Zoom: <button onclick="scalePresentation(0.8)">-</button> 
-    <button onclick="scalePresentation(1.0)">100%</button> 
-    <button onclick="scalePresentation(1.2)">+</button>
-    | Press Esc to exit | ← → for slides
-  </div>
+<!-- Math Modal -->
+<div id="mathModal" class="modal">
+  <h3>Insert Equation</h3>
+  <input id="mathInput" placeholder="Example: \frac{a}{b}">
+  <button onclick="insertMath()">Insert</button>
+  <button onclick="closeMath()">Cancel</button>
 </div>
 
 <script>
-// ==========================
-// ClassScribble JS
-// ==========================
+let slides = [{content:document.getElementById("slide").innerHTML, align:"center"}];
+let current = 0;
 
-// Multi-presentation logic
-let presentations = JSON.parse(localStorage.getItem("classScribblePresentations")) || {};
-let currentPresentation = null;
-let pages = [];
-let currentPage = 0;
-let currentScale = 1.0;
-
-const pageArea = document.getElementById("pageArea");
-const thumbnailContainer = document.getElementById("thumbnailContainer");
-const fullscreenDiv = document.getElementById("fullscreen");
-const fsContent = document.getElementById("fsContent");
-const themeSelect = document.getElementById("themeSelect");
-const presentationSelect = document.getElementById("presentationSelect");
-
-// Save presentations
-function savePresentations(){
-  if(currentPresentation) presentations[currentPresentation] = pages;
-  localStorage.setItem("classScribblePresentations", JSON.stringify(presentations));
-}
-
-// Presentation Management
-function createPresentation(){
-  const name = prompt("Enter presentation name:");
-  if(!name) return;
-  if(presentations[name]) { alert("Name exists!"); return; }
-  presentations[name] = [];
-  currentPresentation = name;
-  pages = [];
-  currentPage = 0;
-  updatePresentationSelect();
-  renderPages();
-  savePresentations();
-}
-function switchPresentation(name){
-  if(!name) return;
-  savePresentations();
-  currentPresentation = name;
-  pages = presentations[name] || [];
-  currentPage = 0;
-  renderPages();
-}
-function updatePresentationSelect(){
-  presentationSelect.innerHTML = "";
-  Object.keys(presentations).forEach(name=>{
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    if(name===currentPresentation) opt.selected = true;
-    presentationSelect.appendChild(opt);
+function renderThumbnails(){
+  const container = document.getElementById("thumbnails");
+  container.innerHTML="";
+  slides.forEach((s,i)=>{
+    const div=document.createElement("div");
+    div.className="thumb"+(i===current?" active":"");
+    div.innerHTML=s.content;
+    div.onclick=()=>switchSlide(i);
+    container.appendChild(div);
   });
 }
 
-// Slide Management
-function addPage(){ pages.push({content:"New Slide", theme:"default"}); currentPage = pages.length-1; renderPages(); savePresentations(); }
-function deletePage(){ if(pages.length===0) return; if(confirm("Delete current slide?")){ pages.splice(currentPage,1); currentPage = Math.max(0,currentPage-1); renderPages(); savePresentations(); }}
+function switchSlide(i){
+  saveSlide();
+  current=i;
+  const slide=document.getElementById("slide");
+  slide.innerHTML=slides[i].content;
+  slide.className="slide "+slides[i].align;
+  renderThumbnails();
+}
 
-// Render Pages & Thumbnails
-function renderPages(){
-  if(pages.length===0){ pageArea.innerHTML=""; thumbnailContainer.innerHTML=""; return; }
-  pageArea.innerHTML = pages[currentPage].content;
-  applyTheme(pages[currentPage].theme);
+function saveSlide(){
+  const slide=document.getElementById("slide");
+  slides[current].content=slide.innerHTML;
+  slides[current].align=slide.classList.contains("left")?"left":
+                        slide.classList.contains("right")?"right":"center";
+}
 
-  thumbnailContainer.innerHTML="";
-  pages.forEach((p,i)=>{
-    const thumb = document.createElement("div");
-    thumb.className = "thumbnail"+(i===currentPage?" active":"");
-    thumb.innerText = "Slide "+(i+1);
-    thumb.draggable = true;
-    thumb.onclick = ()=>{currentPage=i; renderPages();}
-    thumb.addEventListener("dragstart", e=>{ thumb.classList.add("dragging"); e.dataTransfer.setData("text/plain", i); });
-    thumb.addEventListener("dragend", ()=>{ thumb.classList.remove("dragging"); });
-    thumb.addEventListener("dragover", e=>{ e.preventDefault(); });
-    thumb.addEventListener("drop", e=>{
-      const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
-      const toIndex = i;
-      const moved = pages.splice(fromIndex,1)[0];
-      pages.splice(toIndex,0,moved);
-      currentPage = toIndex;
-      renderPages();
-      savePresentations();
-    });
-    thumbnailContainer.appendChild(thumb);
+function addSlide(){
+  saveSlide();
+  slides.push({content:"<h2>New Slide</h2>", align:"center"});
+  switchSlide(slides.length-1);
+}
+
+function deleteSlide(){
+  if(slides.length===1)return;
+  slides.splice(current,1);
+  current=0;
+  switchSlide(0);
+}
+
+function setAlign(type){
+  const slide=document.getElementById("slide");
+  slide.className="slide "+type;
+}
+
+function openMath(){
+  document.getElementById("mathModal").style.display="block";
+}
+function closeMath(){
+  document.getElementById("mathModal").style.display="none";
+}
+
+function insertMath(){
+  const val=document.getElementById("mathInput").value;
+  const span=document.createElement("span");
+  katex.render(val,span,{throwOnError:false});
+  document.getElementById("slide").appendChild(span);
+  closeMath();
+}
+
+function exportPDF(){
+  saveSlide();
+  const container=document.createElement("div");
+  slides.forEach(s=>{
+    const div=document.createElement("div");
+    div.style.width="1120px";
+    div.style.height="630px";
+    div.style.padding="40px";
+    div.style.pageBreakAfter="always";
+    div.innerHTML=s.content;
+    container.appendChild(div);
   });
+  html2pdf().set({
+    margin:0,
+    filename:"ClassScribble.pdf",
+    html2canvas:{scale:2},
+    jsPDF:{unit:"px",format:[1120,630],orientation:"landscape"}
+  }).from(container).save();
 }
-pageArea.addEventListener("input",()=>{ if(pages[currentPage]) pages[currentPage].content = pageArea.innerHTML; savePresentations(); });
 
-// Themes
-function applyTheme(theme){
-  const themes={default:{bg:"#ffffff",text:"#1e293b"},dark:{bg:"#1e1e1e",text:"#f1f5f9"},light:{bg:"#f9fafb",text:"#1e293b"},blue:{bg:"#1e40af",text:"#f1f5f9"}};
-  const t=themes[theme]||themes.default;
-  pageArea.style.background=t.bg; pageArea.style.color=t.text;
-  pages[currentPage].theme = theme; themeSelect.value = theme;
+function newPresentation(){
+  slides=[{content:"<h1>New Presentation</h1>", align:"center"}];
+  current=0;
+  switchSlide(0);
 }
-function changeTheme(theme){ applyTheme(theme); savePresentations(); }
 
-// WYSIWYG
-function format(command,value=null){ document.execCommand(command,false,value); pageArea.focus(); }
-
-// Presentation Mode
-function enterPresentation(){ if(pages.length===0) return; currentScale=1.0; fsContent.innerHTML=pages[currentPage].content; fsContent.style.transform=`scale(${currentScale})`; fullscreenDiv.style.display="flex";}
-function scalePresentation(scale){ currentScale=scale; fsContent.style.transform=`scale(${currentScale})`; }
-
-// Keyboard Shortcuts
-document.addEventListener("keydown", e=>{
-  if(e.ctrlKey && e.shiftKey){
-    if(e.key === "<"){ e.preventDefault(); adjustFontSize(-1); }
-    if(e.key === ">"){ e.preventDefault(); adjustFontSize(1); }
+/* FONT SHORTCUTS */
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey && e.shiftKey && e.key==="<"){
+    document.execCommand("fontSize",false,"3");
   }
-  if(fullscreenDiv.style.display==="flex"){
-    if(e.key==="Escape"){ fullscreenDiv.style.display="none"; }
-    if(e.key==="ArrowRight"){ currentPage=Math.min(pages.length-1,currentPage+1); fsContent.innerHTML=pages[currentPage].content; fsContent.style.transform=`scale(${currentScale})`;}
-    if(e.key==="ArrowLeft"){ currentPage=Math.max(0,currentPage-1); fsContent.innerHTML=pages[currentPage].content; fsContent.style.transform=`scale(${currentScale})`;}
-  } else {
-    if(e.key==="ArrowRight"){ currentPage=Math.min(pages.length-1,currentPage+1); renderPages(); }
-    if(e.key==="ArrowLeft"){ currentPage=Math.max(0,currentPage-1); renderPages(); }
+  if(e.ctrlKey && e.shiftKey && e.key===">"){
+    document.execCommand("fontSize",false,"6");
   }
 });
 
-// Font Size Adjustment
-function adjustFontSize(delta){
-  const selection = window.getSelection();
-  if(!selection.rangeCount) return;
-  const range = selection.getRangeAt(0);
-  const span = document.createElement("span");
-  let currentSize=parseInt(window.getComputedStyle(selection.focusNode.parentNode).fontSize)||16;
-  span.style.fontSize=(currentSize+delta)+"px";
-  try{ range.surroundContents(span); } catch(e){ document.execCommand("fontSize",false,3); }
-  selection.removeAllRanges(); selection.addRange(range);
-  if(pages[currentPage]) pages[currentPage].content=pageArea.innerHTML; savePresentations();
-}
-
-// Export PDF with html2canvas
-async function exportPDF(){
-  if(pages.length===0) return;
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-  for(let i=0;i<pages.length;i++){
-    const tempDiv=document.createElement('div');
-    tempDiv.style.width='1122px'; tempDiv.style.minHeight='794px';
-    tempDiv.style.background=pageArea.style.background||"#ffffff";
-    tempDiv.style.color=pageArea.style.color||"#1e293b";
-    tempDiv.style.padding='20px'; tempDiv.innerHTML=pages[i].content;
-    document.body.appendChild(tempDiv);
-    const canvas=await html2canvas(tempDiv,{scale:2});
-    const imgData=canvas.toDataURL("image/png");
-    const pageWidth=doc.internal.pageSize.getWidth();
-    const pageHeight=doc.internal.pageSize.getHeight();
-    doc.addImage(imgData,'PNG',0,0,pageWidth,pageHeight);
-    document.body.removeChild(tempDiv);
-    if(i<pages.length-1) doc.addPage();
-  }
-  doc.save(currentPresentation?`${currentPresentation}_Slides.pdf`:"ClassScribble_Slides.pdf");
-}
-
-// Initialization
-if(Object.keys(presentations).length>0){ currentPresentation=Object.keys(presentations)[0]; pages=presentations[currentPresentation]; }
-updatePresentationSelect(); renderPages();
+renderThumbnails();
 </script>
 </body>
 </html>
