@@ -148,6 +148,15 @@ body{
 <body>
 
 <div class="sidebar">
+<button onclick="format('bold')"><b>B</b></button>
+<button onclick="format('italic')"><i>I</i></button>
+<button onclick="format('underline')"><u>U</u></button>
+<button onclick="format('superscript')">x²</button>
+<button onclick="format('subscript')">x₂</button>
+<button onclick="format('insertUnorderedList')">•</button>
+<button onclick="format('insertOrderedList')">1.</button>
+<button onclick="format('undo')">↺</button>
+<button onclick="format('redo')">↻</button>
   <button onclick="addSlide()">＋</button>
   <button onclick="deleteSlide()">－</button>
   <button onclick="setAlign('left')">L</button>
@@ -182,107 +191,171 @@ body{
 </div>
 
 <script>
-let slides = [{content:document.getElementById("slide").innerHTML, align:"center"}];
+let slides = [{
+  content: document.getElementById("slide").innerHTML,
+  align: "center"
+}];
+
 let current = 0;
 
-function renderThumbnails(){
+/* ---------------------------
+   SLIDE MANAGEMENT
+---------------------------- */
+
+function renderThumbnails() {
   const container = document.getElementById("thumbnails");
-  container.innerHTML="";
-  slides.forEach((s,i)=>{
-    const div=document.createElement("div");
-    div.className="thumb"+(i===current?" active":"");
-    div.innerHTML=s.content;
-    div.onclick=()=>switchSlide(i);
+  container.innerHTML = "";
+  slides.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "thumb" + (i === current ? " active" : "");
+    div.innerHTML = s.content;
+    div.onclick = () => switchSlide(i);
     container.appendChild(div);
   });
 }
 
-function switchSlide(i){
+function switchSlide(i) {
   saveSlide();
-  current=i;
-  const slide=document.getElementById("slide");
-  slide.innerHTML=slides[i].content;
-  slide.className="slide "+slides[i].align;
+  current = i;
+  const slide = document.getElementById("slide");
+  slide.innerHTML = slides[i].content;
+  slide.className = "slide " + slides[i].align;
   renderThumbnails();
 }
 
-function saveSlide(){
-  const slide=document.getElementById("slide");
-  slides[current].content=slide.innerHTML;
-  slides[current].align=slide.classList.contains("left")?"left":
-                        slide.classList.contains("right")?"right":"center";
+function saveSlide() {
+  const slide = document.getElementById("slide");
+  slides[current].content = slide.innerHTML;
+  slides[current].align =
+    slide.classList.contains("left") ? "left" :
+    slide.classList.contains("right") ? "right" :
+    "center";
 }
 
-function addSlide(){
+function addSlide() {
   saveSlide();
-  slides.push({content:"<h2>New Slide</h2>", align:"center"});
-  switchSlide(slides.length-1);
+  slides.push({ content: "<h2>New Slide</h2>", align: "center" });
+  switchSlide(slides.length - 1);
 }
 
-function deleteSlide(){
-  if(slides.length===1)return;
-  slides.splice(current,1);
-  current=0;
+function deleteSlide() {
+  if (slides.length === 1) return;
+  slides.splice(current, 1);
+  current = 0;
   switchSlide(0);
 }
 
-function setAlign(type){
-  const slide=document.getElementById("slide");
-  slide.className="slide "+type;
+function newPresentation() {
+  slides = [{
+    content: "<h1>New Presentation</h1>",
+    align: "center"
+  }];
+  current = 0;
+  switchSlide(0);
 }
 
-function openMath(){
-  document.getElementById("mathModal").style.display="block";
-}
-function closeMath(){
-  document.getElementById("mathModal").style.display="none";
+/* ---------------------------
+   ALIGNMENT
+---------------------------- */
+
+function setAlign(type) {
+  const slide = document.getElementById("slide");
+  slide.className = "slide " + type;
 }
 
-function insertMath(){
-  const val=document.getElementById("mathInput").value;
-  const span=document.createElement("span");
-  katex.render(val,span,{throwOnError:false});
+/* ---------------------------
+   WYSIWYG COMMANDS
+---------------------------- */
+
+function format(command, value = null) {
+  document.execCommand(command, false, value);
+}
+
+/* Buttons you should add in sidebar:
+   format('bold')
+   format('italic')
+   format('underline')
+   format('superscript')
+   format('subscript')
+   format('insertUnorderedList')
+   format('insertOrderedList')
+   format('undo')
+   format('redo')
+*/
+
+/* ---------------------------
+   MATH SUPPORT
+---------------------------- */
+
+function openMath() {
+  document.getElementById("mathModal").style.display = "block";
+}
+
+function closeMath() {
+  document.getElementById("mathModal").style.display = "none";
+}
+
+function insertMath() {
+  const val = document.getElementById("mathInput").value;
+  const span = document.createElement("span");
+
+  katex.render(val, span, { throwOnError: false });
   document.getElementById("slide").appendChild(span);
+
   closeMath();
 }
 
-function exportPDF(){
+/* ---------------------------
+   EXPORT PDF (LANDSCAPE)
+---------------------------- */
+
+function exportPDF() {
   saveSlide();
-  const container=document.createElement("div");
-  slides.forEach(s=>{
-    const div=document.createElement("div");
-    div.style.width="1120px";
-    div.style.height="630px";
-    div.style.padding="40px";
-    div.style.pageBreakAfter="always";
-    div.innerHTML=s.content;
+
+  const container = document.createElement("div");
+
+  slides.forEach(s => {
+    const div = document.createElement("div");
+    div.style.width = "1120px";
+    div.style.height = "630px";
+    div.style.padding = "40px";
+    div.style.pageBreakAfter = "always";
+    div.innerHTML = s.content;
     container.appendChild(div);
   });
+
   html2pdf().set({
-    margin:0,
-    filename:"ClassScribble.pdf",
-    html2canvas:{scale:2},
-    jsPDF:{unit:"px",format:[1120,630],orientation:"landscape"}
+    margin: 0,
+    filename: "ClassScribble.pdf",
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: "px", format: [1120, 630], orientation: "landscape" }
   }).from(container).save();
 }
 
-function newPresentation(){
-  slides=[{content:"<h1>New Presentation</h1>", align:"center"}];
-  current=0;
-  switchSlide(0);
-}
+/* ---------------------------
+   FONT SIZE SHORTCUTS
+---------------------------- */
 
-/* FONT SHORTCUTS */
-document.addEventListener("keydown",e=>{
-  if(e.ctrlKey && e.shiftKey && e.key==="<"){
-    document.execCommand("fontSize",false,"3");
+document.addEventListener("keydown", e => {
+
+  if (e.ctrlKey && e.shiftKey && e.key === "<") {
+    e.preventDefault();
+    document.execCommand("fontSize", false, "3");
   }
-  if(e.ctrlKey && e.shiftKey && e.key===">"){
-    document.execCommand("fontSize",false,"6");
+
+  if (e.ctrlKey && e.shiftKey && e.key === ">") {
+    e.preventDefault();
+    document.execCommand("fontSize", false, "6");
   }
+
 });
 
+/* Auto-save on typing */
+document.getElementById("slide").addEventListener("input", saveSlide);
+
 renderThumbnails();
+
 </script>
 </body>
 </html>
+
