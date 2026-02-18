@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pen+ Whiteboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Poppins',sans-serif;
+  display:flex;
+  height:100vh;
+  background:#f1f5f9;
+  overflow:hidden;
+}
+
+/* Sidebar */
+.sidebar{
+  width:230px;
+  background:#0f172a;
+  color:white;
+  padding:15px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.sidebar h2{
+  font-size:18px;
+  margin-bottom:10px;
+}
+
+button,select,input{
+  padding:6px;
+  border-radius:6px;
+  border:none;
+  font-size:12px;
+}
+
+button{
+  cursor:pointer;
+  background:#3b82f6;
+  color:white;
+}
+
+button:hover{background:#2563eb}
+
+.tool.active{background:#10b981}
+
+canvas{
+  background:white;
+  flex:1;
+  cursor:crosshair;
+}
+
+/* Top bar */
+.topbar{
+  position:absolute;
+  left:230px;
+  right:0;
+  top:0;
+  height:45px;
+  background:white;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  gap:5px;
+  border-bottom:1px solid #ddd;
+}
+
+.editor{
+  position:absolute;
+  min-width:150px;
+  min-height:80px;
+  padding:8px;
+  border:2px dashed #3b82f6;
+  background:white;
+  outline:none;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>🖊 Pen+ <a href="tme.html">by Tutoring Made Easy</a></h2>
+
+  <button class="tool active" onclick="setTool('pen')">Pen</button>
+  <button class="tool" onclick="setTool('eraser')">Eraser</button>
+  <button class="tool" onclick="setTool('rect')">Rectangle</button>
+  <button class="tool" onclick="setTool('circle')">Circle</button>
+  <button class="tool" onclick="setTool('polygon')">Polygon</button>
+  <button onclick="addText()">Text Box</button>
+
+  <label>Color</label>
+  <input type="color" id="color" value="#000000">
+
+  <label>Size</label>
+  <select id="size">
+    <option>2</option><option>4</option>
+    <option>6</option><option>8</option>
+    <option>12</option>
+  </select>
+
+  <hr>
+  <button onclick="undo()">Undo</button>
+  <button onclick="redo()">Redo</button>
+  <button onclick="clearBoard()">Clear</button>
+
+  <hr>
+  <button onclick="newPage()">+ New Page</button>
+  <button onclick="prevPage()">⬅ Prev</button>
+  <button onclick="nextPage()">Next ➡</button>
+
+  <hr>
+  <button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div class="topbar">
+  <button onclick="format('bold')"><b>B</b></button>
+  <button onclick="format('italic')"><i>I</i></button>
+  <button onclick="format('underline')"><u>U</u></button>
+  <button onclick="format('superscript')">X²</button>
+  <button onclick="format('subscript')">X₂</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth - 230;
+canvas.height = window.innerHeight;
+
+let tool = "pen";
+let drawing = false;
+let startX = 0;
+let startY = 0;
+
+let history = [];
+let redoStack = [];
+
+let pages = [];
+let currentPage = 0;
+
+let snapshot = null;
+let polygonPoints = [];
+
+/* ---------------- PAGE SYSTEM ---------------- */
+
+function savePage() {
+  pages[currentPage] = canvas.toDataURL();
+  localStorage.setItem("penplus_pages", JSON.stringify(pages));
+}
+
+function loadPages() {
+  const stored = localStorage.getItem("penplus_pages");
+  if (stored) pages = JSON.parse(stored);
+  if (!pages.length) pages.push(null);
+  loadPage();
+}
+
+function loadPage() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (pages[currentPage]) {
+    const img = new Image();
+    img.src = pages[currentPage];
+    img.onload = () => ctx.drawImage(img, 0, 0);
+  }
+}
+
+function newPage() {
+  savePage();
+  pages.push(null);
+  currentPage = pages.length - 1;
+  loadPage();
+}
+
+function prevPage() {
+  if (currentPage > 0) {
+    savePage();
+    currentPage--;
+    loadPage();
+  }
+}
+
+function nextPage() {
+  if (currentPage < pages.length - 1) {
+    savePage();
+    currentPage++;
+    loadPage();
+  }
+}
+
+/* ---------------- TOOL SYSTEM ---------------- */
+
+function setTool(t) {
+  tool = t;
+  polygonPoints = [];
+  document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+}
+
+/* ---------------- DRAWING ---------------- */
+
+canvas.addEventListener("mousedown", e => {
+  if (tool === "polygon") return;
+
+  drawing = true;
+  startX = e.offsetX;
+  startY = e.offsetY;
+
+  snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  history.push(canvas.toDataURL());
+  redoStack = [];
+
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+});
+
+canvas.addEventListener("mousemove", e => {
+  if (!drawing) return;
+
+  ctx.strokeStyle = tool === "eraser" ? "#ffffff" : document.getElementById("color").value;
+  ctx.lineWidth = document.getElementById("size").value;
+
+  if (tool === "pen" || tool === "eraser") {
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+  }
+
+  if (tool === "rect" || tool === "circle") {
+    ctx.putImageData(snapshot, 0, 0);
+
+    if (tool === "rect") {
+      ctx.strokeRect(startX, startY, e.offsetX - startX, e.offsetY - startY);
+    }
+
+    if (tool === "circle") {
+      const r = Math.hypot(e.offsetX - startX, e.offsetY - startY);
+      ctx.beginPath();
+      ctx.arc(startX, startY, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  if (drawing) {
+    drawing = false;
+    savePage();
+  }
+});
+
+/* ---------------- POLYGON ---------------- */
+
+canvas.addEventListener("click", e => {
+  if (tool !== "polygon") return;
+
+  polygonPoints.push({ x: e.offsetX, y: e.offsetY });
+
+  if (polygonPoints.length === 1) {
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+  } else {
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+  }
+});
+
+canvas.addEventListener("dblclick", () => {
+  if (tool !== "polygon" || polygonPoints.length < 2) return;
+
+  ctx.closePath();
+  ctx.stroke();
+
+  history.push(canvas.toDataURL());
+  polygonPoints = [];
+  savePage();
+});
+
+/* ---------------- UNDO / REDO ---------------- */
+
+function undo() {
+  if (!history.length) return;
+
+  redoStack.push(canvas.toDataURL());
+  const img = new Image();
+  img.src = history.pop();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    savePage();
+  };
+}
+
+function redo() {
+  if (!redoStack.length) return;
+
+  history.push(canvas.toDataURL());
+  const img = new Image();
+  img.src = redoStack.pop();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    savePage();
+  };
+}
+
+/* ---------------- CLEAR ---------------- */
+
+function clearBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  history.push(canvas.toDataURL());
+  savePage();
+}
+
+/* ---------------- EXPORT ---------------- */
+
+async function exportPDF() {
+  savePage();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("landscape");
+
+  pages.forEach((page, index) => {
+    if (!page) return;
+    if (index > 0) pdf.addPage();
+    pdf.addImage(page, "PNG", 0, 0, 297, 210);
+  });
+
+  pdf.save("PenPlus_Whiteboard.pdf");
+}
+
+/* ---------------- INIT ---------------- */
+
+loadPages();
+
+</script>
+
+</body>
+</html>

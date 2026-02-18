@@ -1,116 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>ClassScribble</title>
 
-<!-- Google Font -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-<!-- KaTeX -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-<!-- html2pdf -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  font-family:'Poppins',sans-serif;
-  display:flex;
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#e0f2fe,#eef2ff);
   height:100vh;
-  background:#f4f7fb;
 }
 
-/* SIDEBAR */
-.sidebar{
-  width:70px;
-  background:#1f3c88;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:10px 5px;
-  gap:10px;
+/* HOME */
+#home{
+  padding:40px;
 }
-.sidebar button{
-  width:40px;
-  height:40px;
-  border:none;
-  border-radius:8px;
-  background:#2e5cb8;
-  color:white;
-  cursor:pointer;
-  font-size:16px;
-}
-.sidebar button:hover{
-  background:#4d79ff;
-}
-
-/* MAIN AREA */
-.main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-/* HEADER */
-.header{
-  background:#ffffff;
-  padding:10px 20px;
-  font-weight:600;
+#home h1{margin-bottom:20px}
+.card{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:15px;
   display:flex;
   justify-content:space-between;
-  border-bottom:1px solid #ddd;
+  align-items:center;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+button{
+  padding:6px 12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#3b82f6;
+  color:white;
 }
 
-/* SLIDE AREA */
+/* EDITOR */
+#editor{
+  display:none;
+  height:100vh;
+  flex-direction:column;
+}
+
+.toolbar{
+  display:flex;
+  gap:6px;
+  padding:10px;
+  background:white;
+  border-bottom:1px solid #ddd;
+  flex-wrap:wrap;
+}
+
+.toolbar button{
+  background:#1e293b;
+  font-size:13px;
+}
+
 .slide-container{
   flex:1;
   display:flex;
   justify-content:center;
   align-items:center;
-  background:#e9edf5;
 }
 
 .slide{
   width:1120px;
   height:630px;
   background:white;
-  padding:40px;
+  padding:50px;
+  border-radius:16px;
   overflow:auto;
-  border-radius:12px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  box-shadow:0 20px 50px rgba(0,0,0,0.2);
 }
 
-.slide[contenteditable="true"]:focus{
-  outline:2px solid #4d79ff;
-}
+.left{text-align:left}
+.center{text-align:center}
+.right{text-align:right}
 
 /* THUMBNAILS */
 .thumbnails{
   height:90px;
   display:flex;
   gap:10px;
-  overflow-x:auto;
   padding:10px;
-  background:#ffffff;
+  overflow-x:auto;
+  background:white;
   border-top:1px solid #ddd;
 }
-
 .thumb{
-  width:160px;
-  height:80px;
-  background:white;
-  border:2px solid transparent;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:12px;
+  width:150px;
+  height:70px;
   padding:5px;
+  border-radius:8px;
+  border:2px solid transparent;
+  font-size:11px;
   overflow:hidden;
+  cursor:pointer;
 }
-.thumb.active{
-  border-color:#4d79ff;
+.thumb.active{border-color:#3b82f6}
+
+/* PRESENTATION */
+#presentation{
+  position:fixed;
+  inset:0;
+  background:black;
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+#presentationSlide{
+  width:90vw;
+  height:90vh;
+  background:white;
+  padding:60px;
+  overflow:auto;
 }
 
 /* MODAL */
@@ -121,241 +132,233 @@ body{
   transform:translate(-50%,-50%);
   background:white;
   padding:20px;
-  border-radius:10px;
+  border-radius:12px;
   display:none;
-  box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  box-shadow:0 20px 40px rgba(0,0,0,0.3);
 }
 .modal input{
   width:100%;
   padding:8px;
   margin-bottom:10px;
 }
-.modal button{
-  padding:6px 12px;
-  border:none;
-  background:#4d79ff;
-  color:white;
-  border-radius:5px;
-  cursor:pointer;
-}
-
-/* ALIGNMENT */
-.left{text-align:left}
-.center{text-align:center}
-.right{text-align:right}
 </style>
 </head>
 <body>
 
-<div class="sidebar">
-<button onclick="format('bold')"><b>B</b></button>
-<button onclick="format('italic')"><i>I</i></button>
-<button onclick="format('underline')"><u>U</u></button>
-<button onclick="format('superscript')">x²</button>
-<button onclick="format('subscript')">x₂</button>
-<button onclick="format('insertUnorderedList')">•</button>
-<button onclick="format('insertOrderedList')">1.</button>
-<button onclick="format('undo')">↺</button>
-<button onclick="format('redo')">↻</button>
-  <button onclick="addSlide()">＋</button>
-  <button onclick="deleteSlide()">－</button>
+<!-- HOME -->
+<div id="home">
+  <h1>ClassScribble <a href="tme.html">by Tutoring Made Easy</a></h1>
+  <button onclick="createPresentation()">+ New Presentation</button>
+  <div id="list"></div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor">
+
+<div class="toolbar">
+  <button onclick="backHome()">Home</button>
+  <button onclick="addSlide()">Add</button>
+  <button onclick="deleteSlide()">Delete</button>
+  <button onclick="startPresentation()">Present</button>
+  <button onclick="exportPDF()">PDF</button>
+
+  <!-- WYSIWYG -->
+  <button onclick="format('bold')">B</button>
+  <button onclick="format('italic')">I</button>
+  <button onclick="format('underline')">U</button>
+  <button onclick="format('superscript')">x²</button>
+  <button onclick="format('subscript')">x₂</button>
+  <button onclick="format('insertUnorderedList')">•</button>
+  <button onclick="format('insertOrderedList')">1.</button>
   <button onclick="setAlign('left')">L</button>
   <button onclick="setAlign('center')">C</button>
   <button onclick="setAlign('right')">R</button>
+  <button onclick="insertImage()">Image</button>
+  <button onclick="insertTable()">Table</button>
   <button onclick="openMath()">∑</button>
-  <button onclick="exportPDF()">PDF</button>
 </div>
 
-<div class="main">
-  <div class="header">
-    <span>ClassScribble</span>
-    <button onclick="newPresentation()">New Presentation</button>
-  </div>
-
-  <div class="slide-container">
-    <div id="slide" class="slide center" contenteditable="true">
-      <h1>Welcome to ClassScribble</h1>
-      <p>Start typing here...</p>
-    </div>
-  </div>
-
-  <div id="thumbnails" class="thumbnails"></div>
+<div class="slide-container">
+  <div id="slide" class="slide center" contenteditable="true"></div>
 </div>
 
-<!-- Math Modal -->
+<div id="thumbnails" class="thumbnails"></div>
+</div>
+
+<!-- PRESENTATION -->
+<div id="presentation">
+  <div id="presentationSlide"></div>
+</div>
+
+<!-- MATH MODAL -->
 <div id="mathModal" class="modal">
   <h3>Insert Equation</h3>
-  <input id="mathInput" placeholder="Example: \frac{a}{b}">
+  <input id="mathInput" placeholder="\frac{a}{b}">
   <button onclick="insertMath()">Insert</button>
   <button onclick="closeMath()">Cancel</button>
 </div>
 
 <script>
-let slides = [{
-  content: document.getElementById("slide").innerHTML,
-  align: "center"
-}];
+let data=JSON.parse(localStorage.getItem("csData"))||{};
+let currentName=null;
+let slides=[];
+let current=0;
 
-let current = 0;
+function saveAll(){
+  localStorage.setItem("csData",JSON.stringify(data));
+}
 
-/* ---------------------------
-   SLIDE MANAGEMENT
----------------------------- */
-
-function renderThumbnails() {
-  const container = document.getElementById("thumbnails");
-  container.innerHTML = "";
-  slides.forEach((s, i) => {
-    const div = document.createElement("div");
-    div.className = "thumb" + (i === current ? " active" : "");
-    div.innerHTML = s.content;
-    div.onclick = () => switchSlide(i);
-    container.appendChild(div);
+function renderHome(){
+  list.innerHTML="";
+  Object.keys(data).forEach(name=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`<span>${name}</span>
+    <div>
+    <button onclick="openPresentation('${name}')">Open</button>
+    <button onclick="deletePresentation('${name}')">Delete</button>
+    </div>`;
+    list.appendChild(div);
   });
 }
 
-function switchSlide(i) {
+function createPresentation(){
+  const name=prompt("Presentation name?");
+  if(!name)return;
+  data[name]=[{content:"<h1>"+name+"</h1>"}];
+  saveAll();
+  renderHome();
+}
+
+function deletePresentation(name){
+  delete data[name];
+  saveAll();
+  renderHome();
+}
+
+function openPresentation(name){
+  currentName=name;
+  slides=data[name];
+  current=0;
+  home.style.display="none";
+  editor.style.display="flex";
+  loadSlide();
+}
+
+function backHome(){
   saveSlide();
-  current = i;
-  const slide = document.getElementById("slide");
-  slide.innerHTML = slides[i].content;
-  slide.className = "slide " + slides[i].align;
-  renderThumbnails();
+  data[currentName]=slides;
+  saveAll();
+  editor.style.display="none";
+  home.style.display="block";
+  renderHome();
 }
 
-function saveSlide() {
-  const slide = document.getElementById("slide");
-  slides[current].content = slide.innerHTML;
-  slides[current].align =
-    slide.classList.contains("left") ? "left" :
-    slide.classList.contains("right") ? "right" :
-    "center";
+function saveSlide(){
+  slides[current].content=slide.innerHTML;
 }
 
-function addSlide() {
+function loadSlide(){
+  slide.innerHTML=slides[current].content;
+  renderThumbs();
+}
+
+function addSlide(){
   saveSlide();
-  slides.push({ content: "<h2>New Slide</h2>", align: "center" });
-  switchSlide(slides.length - 1);
+  slides.push({content:"<h2>New Slide</h2>"});
+  current=slides.length-1;
+  loadSlide();
 }
 
-function deleteSlide() {
-  if (slides.length === 1) return;
-  slides.splice(current, 1);
-  current = 0;
-  switchSlide(0);
+function deleteSlide(){
+  if(slides.length===1)return;
+  slides.splice(current,1);
+  current=0;
+  loadSlide();
 }
 
-function newPresentation() {
-  slides = [{
-    content: "<h1>New Presentation</h1>",
-    align: "center"
-  }];
-  current = 0;
-  switchSlide(0);
+function renderThumbs(){
+  thumbnails.innerHTML="";
+  slides.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="thumb"+(i===current?" active":"");
+    d.innerHTML=s.content;
+    d.onclick=()=>{saveSlide();current=i;loadSlide()};
+    thumbnails.appendChild(d);
+  });
 }
 
-/* ---------------------------
-   ALIGNMENT
----------------------------- */
+function format(cmd){document.execCommand(cmd,false,null)}
 
-function setAlign(type) {
-  const slide = document.getElementById("slide");
-  slide.className = "slide " + type;
+function setAlign(type){
+  slide.className="slide "+type;
 }
 
-/* ---------------------------
-   WYSIWYG COMMANDS
----------------------------- */
-
-function format(command, value = null) {
-  document.execCommand(command, false, value);
+function insertImage(){
+  const url=prompt("Image URL:");
+  if(url)document.execCommand("insertImage",false,url);
 }
 
-/* Buttons you should add in sidebar:
-   format('bold')
-   format('italic')
-   format('underline')
-   format('superscript')
-   format('subscript')
-   format('insertUnorderedList')
-   format('insertOrderedList')
-   format('undo')
-   format('redo')
-*/
-
-/* ---------------------------
-   MATH SUPPORT
----------------------------- */
-
-function openMath() {
-  document.getElementById("mathModal").style.display = "block";
+function insertTable(){
+  const table="<table border='1' style='width:100%;border-collapse:collapse'><tr><td>Cell</td><td>Cell</td></tr><tr><td>Cell</td><td>Cell</td></tr></table>";
+  document.execCommand("insertHTML",false,table);
 }
 
-function closeMath() {
-  document.getElementById("mathModal").style.display = "none";
-}
-
-function insertMath() {
-  const val = document.getElementById("mathInput").value;
-  const span = document.createElement("span");
-
-  katex.render(val, span, { throwOnError: false });
-  document.getElementById("slide").appendChild(span);
-
+function openMath(){mathModal.style.display="block"}
+function closeMath(){mathModal.style.display="none"}
+function insertMath(){
+  const span=document.createElement("span");
+  katex.render(mathInput.value,span,{throwOnError:false});
+  slide.appendChild(span);
   closeMath();
 }
 
-/* ---------------------------
-   EXPORT PDF (LANDSCAPE)
----------------------------- */
-
-function exportPDF() {
+function exportPDF(){
   saveSlide();
-
-  const container = document.createElement("div");
-
-  slides.forEach(s => {
-    const div = document.createElement("div");
-    div.style.width = "1120px";
-    div.style.height = "630px";
-    div.style.padding = "40px";
-    div.style.pageBreakAfter = "always";
-    div.innerHTML = s.content;
-    container.appendChild(div);
+  const container=document.createElement("div");
+  slides.forEach(s=>{
+    const page=document.createElement("div");
+    page.style.width="1120px";
+    page.style.height="630px";
+    page.style.padding="50px";
+    page.style.pageBreakAfter="always";
+    page.innerHTML=s.content;
+    container.appendChild(page);
   });
-
   html2pdf().set({
-    margin: 0,
-    filename: "ClassScribble.pdf",
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: "px", format: [1120, 630], orientation: "landscape" }
+    margin:0,
+    filename:currentName+".pdf",
+    html2canvas:{scale:2},
+    jsPDF:{unit:"px",format:[1120,630],orientation:"landscape"}
   }).from(container).save();
 }
 
-/* ---------------------------
-   FONT SIZE SHORTCUTS
----------------------------- */
+function startPresentation(){
+  saveSlide();
+  presentation.style.display="flex";
+  showSlide();
+}
 
-document.addEventListener("keydown", e => {
+function showSlide(){
+  presentationSlide.innerHTML=slides[current].content;
+}
 
-  if (e.ctrlKey && e.shiftKey && e.key === "<") {
-    e.preventDefault();
-    document.execCommand("fontSize", false, "3");
+function exitPresentation(){
+  presentation.style.display="none";
+}
+
+document.addEventListener("keydown",e=>{
+  if(presentation.style.display==="flex"){
+    if(e.key==="ArrowRight"&&current<slides.length-1){current++;showSlide();}
+    if(e.key==="ArrowLeft"&&current>0){current--;showSlide();}
+    if(e.key==="Escape"){exitPresentation();}
   }
-
-  if (e.ctrlKey && e.shiftKey && e.key === ">") {
-    e.preventDefault();
-    document.execCommand("fontSize", false, "6");
-  }
-
 });
 
-/* Auto-save on typing */
-document.getElementById("slide").addEventListener("input", saveSlide);
+slide.addEventListener("input",saveSlide);
 
-renderThumbnails();
-
+renderHome();
 </script>
+
 </body>
 </html>
-
